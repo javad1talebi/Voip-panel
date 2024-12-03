@@ -3,7 +3,7 @@
 // Load sensitive information from a configuration file or environment variables
 $servername = "localhost";
 $username = "root";
-$password = "arayerazavi@1403";  // For production, avoid hardcoding passwords
+$password = "";  // For production, avoid hardcoding passwords
 $dbname = "voip_db";
 
 // Create a connection to the database
