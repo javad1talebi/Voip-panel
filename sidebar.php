@@ -9,10 +9,13 @@ $currentPage = basename($_SERVER['PHP_SELF']); // Get the current page name
         </div>
         <nav class="mt-6 flex-1">
             <?php if ($currentPage !== 'sms_panel.php') : ?>
-                <a href="/voip/sms_panel/sms_panel.php" class="flex items-center py-3 px-4 hover:bg-blue-700 transition duration-200 ease-in-out rounded-md">
-                    <i class="fas fa-sms ml-2 text-lg"></i>
-                    پنل پیامکی
-                </a>
+                <form action="/voip/sms_panel/sms_panel.php" method="POST">
+                    <input type="hidden" name="token" value="<?php echo $_SESSION['token']; ?>">
+                    <button type="submit" class="flex items-center py-3 px-4 hover:bg-blue-700 transition duration-200 ease-in-out rounded-md">
+                        <i class="fas fa-sms ml-2 text-lg"></i>
+                        پنل پیامکی
+                    </button>
+                </form>
             <?php else : ?>
                 <div class="flex items-center py-3 px-4 bg-blue-600 rounded-md">
                     <i class="fas fa-sms ml-2 text-lg"></i>

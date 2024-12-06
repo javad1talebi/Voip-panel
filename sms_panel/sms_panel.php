@@ -1,4 +1,17 @@
-<?php include './../header.php'; ?>
+<?php
+session_start();
+
+// بررسی اینکه توکن در درخواست POST وجود دارد یا خیر
+if (!isset($_POST['token']) || $_SESSION['token'] !== $_POST['token']) {
+    // اگر توکن معتبر نباشد، هدایت به صفحه اصلی
+    header('Location: /voip/index.php');  
+    exit();
+}
+
+// حذف توکن پس از استفاده برای جلوگیری از استفاده مجدد
+unset($_SESSION['token']);
+include './../header.php';
+ ?>
 <body class="bg-gray-100 font-Vazir">
 <?php include './../sidebar.php'; ?>
 
