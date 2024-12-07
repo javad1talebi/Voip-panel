@@ -1,10 +1,7 @@
 <?php
 // Load sensitive information from a configuration file or environment variables
 // Load sensitive information from a configuration file or environment variables
-$servername = "localhost";
-$username = "root";
-$password = "";  // For production, avoid hardcoding passwords
-$dbname = "voip_db";
+include './host.php';
 
 // Create a connection to the database
 $conn = new mysqli($servername, $username, $password, $dbname);

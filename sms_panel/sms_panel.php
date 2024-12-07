@@ -18,10 +18,7 @@ include './../header.php';
 <div class="flex-1 p-6">
     <?php
     // اطلاعات پایگاه داده
-    $servername = "localhost";
-    $username = "root";
-    $password = ""; // در صورت نیاز رمز عبور را وارد کنید
-    $dbname = "voip_db";
+    include './host.php';
 
     // اتصال به سرور MySQL بدون اشاره به پایگاه داده
     $conn = new mysqli($servername, $username, $password);

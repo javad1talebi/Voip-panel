@@ -1,9 +1,6 @@
 <?php
 // اتصال به پایگاه داده
-$servername = "localhost";
-$username = "root";
-$password = "";
-$dbname = "voip_db";
+include './host.php';
 
 $conn = new mysqli($servername, $username, $password, $dbname);
 
