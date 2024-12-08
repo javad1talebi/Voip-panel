@@ -4,7 +4,7 @@ session_start();
 // بررسی اینکه توکن در درخواست POST وجود دارد یا خیر
 if (!isset($_POST['token']) || $_SESSION['token'] !== $_POST['token']) {
     // اگر توکن معتبر نباشد، هدایت به صفحه اصلی
-    header('Location: /voip/index.php');  
+    header('Location: /modules/voip_modules/index.php');  
     exit();
 }
 
