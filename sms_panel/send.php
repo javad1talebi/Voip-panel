@@ -1,41 +1,44 @@
 <?php
-// Load sensitive information from a configuration file or environment variables
-// Load sensitive information from a configuration file or environment variables
+// نمایش خطاهای PHP برای عیب‌یابی
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+// اتصال به پایگاه داده
 include './host.php';
 
-// Create a connection to the database
 $conn = new mysqli($servername, $username, $password, $dbname);
 
-// Check the connection
+// بررسی اتصال
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-// Phone number to check
-$phone_number = "09363685728";
+// شماره تلفن برای بررسی
+$phone_number = preg_replace('/[^0-9]/', '', "09363685728");
 
-// Prepare a statement to check if the phone number already exists
+// بررسی اینکه آیا شماره تلفن وجود دارد
 $sql = "SELECT * FROM phone_numbers WHERE phone_number = ?";
 $stmt = $conn->prepare($sql);
 
 if (!$stmt) {
-    die("Query preparation failed: " . $conn->error);
+    die("خطا در آماده‌سازی کوئری SELECT: " . $conn->error);
 }
 
 $stmt->bind_param("s", $phone_number);
 $stmt->execute();
-$result = $stmt->get_result();
+$stmt->store_result(); // ذخیره نتایج
 
-if ($result->num_rows > 0) {
-    // If the phone number already exists
+if ($stmt->num_rows > 0) {
+    // اگر شماره تلفن قبلاً وجود دارد
     echo "شماره تلفن قبلاً ذخیره شده است.<br>";
 } else {
-    // Insert the phone number if it doesn't exist
+    // اضافه کردن شماره تلفن جدید
     $insert_sql = "INSERT INTO phone_numbers (phone_number) VALUES (?)";
     $insert_stmt = $conn->prepare($insert_sql);
-    
+
     if (!$insert_stmt) {
-        die("Insert query preparation failed: " . $conn->error);
+        die("خطا در آماده‌سازی کوئری INSERT: " . $conn->error);
     }
 
     $insert_stmt->bind_param("s", $phone_number);
@@ -43,8 +46,8 @@ if ($result->num_rows > 0) {
     if ($insert_stmt->execute()) {
         echo "شماره تلفن با موفقیت ذخیره شد.<br>";
 
-        // Retrieve welcome message from the `messages` table
-        $message_sql = "SELECT message FROM messages LIMIT 1";  // Add proper LIMIT
+        // دریافت پیام خوش‌آمدگویی
+        $message_sql = "SELECT message FROM messages LIMIT 1";
         $message_result = $conn->query($message_sql);
 
         if ($message_result->num_rows > 0) {
@@ -64,50 +67,43 @@ if ($result->num_rows > 0) {
         echo "خطا در ذخیره شماره تلفن: " . $insert_stmt->error . "<br>";
     }
 
-    $insert_stmt->close();  // Close the insert statement
+    $insert_stmt->close();
 }
 
-// Close the prepared statement and the connection
 $stmt->close();
 $conn->close();
 
 // تابع ارسال پیامک
 function sendSMS($phone_numbers, $message) {
     $url = "https://ippanel.com/services.jspd";
-    
-    // تبدیل شماره‌های تلفن به آرایه
-    $rcpt_nm = $phone_numbers;  
+
     $param = array(
         'uname' => 'berelianco',
         'pass' => 'Mahdi12!@T',
-        'from' => '+9850002040000000',  // شما باید این را با یک شماره معتبر پر کنید
-        'message' => $message,  // استفاده از پیام دریافتی
-        'to' => json_encode($rcpt_nm),
+        'from' => '+9850002040000000',
+        'message' => $message,
+        'to' => json_encode($phone_numbers),
         'op' => 'send'
     );
-    
-    $handler = curl_init($url);             
+
+    $handler = curl_init($url);
     curl_setopt($handler, CURLOPT_CUSTOMREQUEST, "POST");
-    curl_setopt($handler, CURLOPT_POSTFIELDS, http_build_query($param));                       
+    curl_setopt($handler, CURLOPT_POSTFIELDS, http_build_query($param));
     curl_setopt($handler, CURLOPT_RETURNTRANSFER, true);
-    
-    // غیرفعال کردن تأیید SSL (فقط برای تست، در تولید توصیه نمی‌شود)
-    curl_setopt($handler, CURLOPT_SSL_VERIFYHOST, 0);
-    curl_setopt($handler, CURLOPT_SSL_VERIFYPEER, 0);
-    
+    curl_setopt($handler, CURLOPT_SSL_VERIFYHOST, 2);
+    curl_setopt($handler, CURLOPT_SSL_VERIFYPEER, 1);
+
     $response2 = curl_exec($handler);
-    
+
     if (curl_errno($handler)) {
-        // مدیریت خطای cURL
         echo 'cURL Error: ' . curl_error($handler) . "<br>";
-        return false;  // در صورت وجود خطا، false برمی‌گرداند
+        return false;
     } else {
         $response2 = json_decode($response2, true);
-        echo 'ok' . "<br>";  // اگر بخواهید فقط یک پیام موفقیت چاپ کنید
-        return true;  // اگر موفقیت‌آمیز بود
+        echo "Response: " . print_r($response2, true) . "<br>";
+        return true;
     }
-    
+
     curl_close($handler);
 }
-
 ?>
