@@ -1,7 +1,7 @@
 <?php
 $servername = "localhost";
 $username = "root";
-$password = ""; // رمز عبور را در صورت نیاز وارد کنید
+$password = "Javad@1368"; // رمز عبور را در صورت نیاز وارد کنید
 $dbname = "voip_db";
 
 // ایجاد اتصال به MySQL
@@ -14,9 +14,7 @@ if ($conn->connect_error) {
 
 // بررسی وجود دیتابیس و ایجاد آن در صورت عدم وجود
 $sql = "CREATE DATABASE IF NOT EXISTS $dbname";
-if ($conn->query($sql) === TRUE) {
-    echo "دیتابیس '$dbname' با موفقیت ایجاد شد یا از قبل وجود دارد.";
-} else {
+if ($conn->query($sql) === FALSE) {
     echo "خطا در ایجاد دیتابیس: " . $conn->error;
 }
 
