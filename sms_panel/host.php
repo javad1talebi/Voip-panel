@@ -1,7 +1,7 @@
 <?php
 $servername = "localhost";
 $username = "root";
-$password = "Javad@1368"; // رمز عبور را در صورت نیاز وارد کنید
+$password = ""; // رمز عبور را در صورت نیاز وارد کنید
 $dbname = "voip_db";
 
 // ایجاد اتصال به MySQL
