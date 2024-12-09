@@ -1,5 +1,5 @@
 <?php
-// نمایش خطاهای PHP برای عیب‌یابی
+// نمایش خطاها برای عیب‌یابی (در محیط تولید غیرفعال کنید)
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
@@ -11,13 +11,48 @@ $conn = new mysqli($servername, $username, $password, $dbname);
 
 // بررسی اتصال
 if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+    die("خطا در اتصال به پایگاه داده: " . $conn->connect_error);
 }
 
-// شماره تلفن برای بررسی
-$phone_number = preg_replace('/[^0-9]/', '', "09363685728");
+// بررسی و ایجاد جدول sms_settings در صورت عدم وجود
+$create_table_sql = "
+    CREATE TABLE IF NOT EXISTS sms_settings (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        uname VARCHAR(255) NOT NULL,
+        pass VARCHAR(255) NOT NULL,
+        `from` VARCHAR(50) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+";
+if (!$conn->query($create_table_sql)) {
+    die("خطا در ایجاد جدول sms_settings: " . $conn->error);
+}
 
-// بررسی اینکه آیا شماره تلفن وجود دارد
+// بررسی اینکه آیا داده‌ای در جدول sms_settings وجود دارد
+$sms_settings_sql = "SELECT uname, pass, `from` FROM sms_settings LIMIT 1";
+$sms_settings_result = $conn->query($sms_settings_sql);
+
+if ($sms_settings_result->num_rows === 0) {
+    // وارد کردن یک مقدار پیش‌فرض به جدول
+    $default_sms_sql = "
+        INSERT INTO sms_settings (uname, pass, `from`) 
+        VALUES ('default_user', 'default_pass', '+9850002040000000')
+    ";
+    if (!$conn->query($default_sms_sql)) {
+        die("خطا در وارد کردن مقدار پیش‌فرض به جدول sms_settings: " . $conn->error);
+    }
+    echo "مقدار پیش‌فرض به جدول sms_settings اضافه شد.<br>";
+}
+
+// ادامه کد...
+
+// پاکسازی و بررسی شماره تلفن
+$phone_number = preg_replace('/[^0-9]/', '', "09363685728");
+if (strlen($phone_number) !== 11 || !preg_match('/^09[0-9]{9}$/', $phone_number)) {
+    die("شماره تلفن نامعتبر است.");
+}
+
+// بررسی وجود شماره تلفن
 $sql = "SELECT * FROM phone_numbers WHERE phone_number = ?";
 $stmt = $conn->prepare($sql);
 
@@ -27,10 +62,9 @@ if (!$stmt) {
 
 $stmt->bind_param("s", $phone_number);
 $stmt->execute();
-$stmt->store_result(); // ذخیره نتایج
+$stmt->store_result();
 
 if ($stmt->num_rows > 0) {
-    // اگر شماره تلفن قبلاً وجود دارد
     echo "شماره تلفن قبلاً ذخیره شده است.<br>";
 } else {
     // اضافه کردن شماره تلفن جدید
@@ -50,15 +84,17 @@ if ($stmt->num_rows > 0) {
         $message_sql = "SELECT message FROM messages LIMIT 1";
         $message_result = $conn->query($message_sql);
 
-        if ($message_result->num_rows > 0) {
+        if ($message_result && $message_result->num_rows > 0) {
             $row = $message_result->fetch_assoc();
             $welcome_message = $row['message'];
 
-            // ارسال پیامک خوش‌آمدگویی
-            if (sendSMS([$phone_number], $welcome_message)) {
+            // دریافت اطلاعات ارسال پیامک از پایگاه داده
+            $sms_data = $sms_settings_result->fetch_assoc();
+            $sms_result = sendSMS([$phone_number], $welcome_message, $sms_data);
+            if ($sms_result === true) {
                 echo "پیام خوش‌آمدگویی ارسال شد: " . $welcome_message . "<br>";
             } else {
-                echo "خطا در ارسال پیام خوش‌آمدگویی.<br>";
+                echo "خطا در ارسال پیام خوش‌آمدگویی: " . $sms_result . "<br>";
             }
         } else {
             echo "پیام خوش‌آمدگویی پیدا نشد.<br>";
@@ -74,13 +110,13 @@ $stmt->close();
 $conn->close();
 
 // تابع ارسال پیامک
-function sendSMS($phone_numbers, $message) {
+function sendSMS($phone_numbers, $message, $sms_data) {
     $url = "https://ippanel.com/services.jspd";
 
     $param = array(
-        'uname' => 'berelianco',
-        'pass' => 'Mahdi12!@T',
-        'from' => '+9850002040000000',
+        'uname' => $sms_data['uname'],
+        'pass' => $sms_data['pass'],
+        'from' => $sms_data['from'],
         'message' => $message,
         'to' => json_encode($phone_numbers),
         'op' => 'send'
@@ -93,15 +129,17 @@ function sendSMS($phone_numbers, $message) {
     curl_setopt($handler, CURLOPT_SSL_VERIFYHOST, 2);
     curl_setopt($handler, CURLOPT_SSL_VERIFYPEER, 1);
 
-    $response2 = curl_exec($handler);
+    $response = curl_exec($handler);
 
     if (curl_errno($handler)) {
-        echo 'cURL Error: ' . curl_error($handler) . "<br>";
-        return false;
+        return 'cURL Error: ' . curl_error($handler);
     } else {
-        $response2 = json_decode($response2, true);
-        echo "Response: " . print_r($response2, true) . "<br>";
-        return true;
+        $response = json_decode($response, true);
+        if (isset($response['status']) && $response['status'] === 'OK') {
+            return true;
+        } else {
+            return isset($response['message']) ? $response['message'] : 'خطای نامشخص.';
+        }
     }
 
     curl_close($handler);

@@ -11,7 +11,8 @@ if (!isset($_POST['token']) || $_SESSION['token'] !== $_POST['token']) {
 // حذف توکن پس از استفاده برای جلوگیری از استفاده مجدد
 unset($_SESSION['token']);
 include './../header.php';
- ?>
+?>
+
 <body class="bg-gray-100 font-Vazir">
 <?php include './../sidebar.php'; ?>
 
@@ -37,6 +38,18 @@ include './../header.php';
     // انتخاب پایگاه داده
     if (!$conn->select_db($dbname)) {
         die("<div class='text-red-500'>خطا در انتخاب پایگاه داده: " . $conn->error . "</div>");
+    }
+
+    // بررسی و ایجاد جدول sms_settings اگر وجود نداشته باشد
+    $create_sms_settings_table = "
+        CREATE TABLE IF NOT EXISTS sms_settings (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            uname VARCHAR(255) NOT NULL,
+            pass VARCHAR(255) NOT NULL,
+            `from` VARCHAR(255) NOT NULL
+        ) CHARACTER SET utf16 COLLATE utf16_persian_ci";
+    if (!$conn->query($create_sms_settings_table)) {
+        die("<div class='text-red-500'>خطا در ایجاد جدول sms_settings: " . $conn->error . "</div>");
     }
 
     // بررسی و ایجاد جدول messages
@@ -72,20 +85,57 @@ include './../header.php';
     } elseif (!$message_result) {
         echo "<div class='text-red-500'>خطا در خواندن پیام: " . $conn->error . "</div>";
     }
+
+    // دریافت تنظیمات SMS از پایگاه داده (در صورت وجود)
+    $sms_username = '';
+    $sms_password = '';
+    $sms_sender = '';
+
+    // خواندن تنظیمات SMS از جدول sms_settings (اگر موجود باشد)
+    $sql = "SELECT uname, pass, `from` FROM sms_settings LIMIT 1";
+    $result = $conn->query($sql);
+
+    if ($result && $result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        $sms_username = $row['uname'];
+        $sms_password = $row['pass'];
+        $sms_sender = $row['from'];
+    }
     ?>
 
+<div class="flex space-x-6 mt-6">
     <!-- فرم تغییر پیام خوش‌آمدگویی -->
-    <div class="mt-6 bg-white p-6 rounded-lg shadow-md">
-        <h3 class="text-xl font-bold mb-4">تغییر پیام </h3>
+    <div class="bg-white p-6 rounded-lg shadow-md flex-1">
+        <h3 class="text-xl font-bold mb-4">تغییر پیام</h3>
         <div class="mb-4 p-4 border border-gray-300 rounded bg-gray-50">
             <strong>پیام قبلی:</strong> <span><?php echo $current_message; ?></span>
         </div>
         <form action="save_message.php" method="POST">
             <label for="message" class="block text-right mb-2">متن پیام جدید:</label>
-            <textarea name="message" id="message" required class="border border-gray-300 rounded w-full p-2 mb-4 resize-none focus:ring-2 focus:ring-green-500"></textarea>
-            <input type="submit" value="ثبت پیام" class="bg-green-500 text-white font-bold py-2 px-4 rounded hover:bg-green-600 transition duration-200">
+            <textarea name="message" id="message" required class="h-40 border border-gray-300 rounded w-full p-2 resize-none focus:ring-2 focus:ring-green-500"></textarea>
+            <input type="submit" value="ثبت پیام" class="bg-green-500 text-white font-bold py-2 px-4 rounded hover:bg-green-600 transition duration-200 w-full">
         </form>
     </div>
+
+    <!-- فرم تنظیمات پیامک -->
+    <div class="bg-white p-6 rounded-lg shadow-md flex-1">
+        <h3 class="text-xl font-bold mb-4">تنظیمات پیامک</h3>
+        <form action="save_sms.php" method="POST">
+            <label for="sms_username" class="block text-right mb-2">نام کاربری :</label>
+            <input type="text" name="sms_username" id="sms_username" required value="<?php echo htmlspecialchars($sms_username); ?>" class="border border-gray-300 rounded w-full p-2 mb-4 focus:ring-2 focus:ring-green-500">
+
+            <label for="sms_password" class="block text-right mb-2">رمز عبور :</label>
+            <input type="text" name="sms_password" id="sms_password" required value="<?php echo htmlspecialchars($sms_password); ?>" class="border border-gray-300 rounded w-full p-2 mb-4 focus:ring-2 focus:ring-green-500">
+
+            <label for="sms_sender" class="block text-right mb-2">فرستنده :</label>
+            <input type="text" name="sms_sender" id="sms_sender" required value="<?php echo htmlspecialchars($sms_sender); ?>" class="border border-gray-300 rounded w-full p-2 mb-4 focus:ring-2 focus:ring-green-500">
+
+            <input type="submit" value="ثبت تنظیمات " class="bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-600 transition duration-200 w-full">
+        </form>
+    </div>
+</div>
+
+
 
     <!-- لیست شماره‌های تلفن -->
     <div class="mt-6 bg-white p-6 rounded-lg shadow-md">
@@ -113,8 +163,6 @@ include './../header.php';
                 } else {
                     echo "<tr><td class='px-4 py-2 text-right'>هیچ شماره‌ای وجود ندارد.</td></tr>";
                 }
-
-                $conn->close(); // بستن اتصال
                 ?>
             </tbody>
         </table>
@@ -137,5 +185,9 @@ include './../header.php';
         }
     });
 </script>
+
+<?php
+$conn->close(); // بستن اتصال پایگاه داده بعد از انجام تمامی عملیات‌ها
+?>
 </body>
 </html>
